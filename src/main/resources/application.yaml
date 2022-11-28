@@ -1,0 +1,39 @@
+server:
+  port: 8090
+spring.jpa:
+  properties:
+    hibernate.enable_lazy_load_no_trans: true
+  database: POSTGRESQL
+  hibernate.ddl-auto: update
+  show-sql: true
+spring.datasource:
+  driverClassName: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5432/hr_management
+  username: postgres
+  password: 1111111111
+spring:
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+    protocol: smtp
+    host: 8090
+    port: 80
+  sql:
+    init:
+      platform: postgres
+      mode: never
+  main:
+    allow-circular-references: true
+
+springdoc:
+  swagger-ui:
+    try-it-out-enabled: true
+    path: ui
+  api-docs:
+    path: /api/doc
+
+
+
+
