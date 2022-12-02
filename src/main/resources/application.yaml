@@ -8,7 +8,7 @@ spring.jpa:
   show-sql: true
 spring.datasource:
   driverClassName: org.postgresql.Driver
-  url: jdbc:postgresql://localhost:5432/hr_management
+  url: jdbc:postgresql://192.168.61.86:5432/hr_management
   username: postgres
   password: 1111111111
 spring:
