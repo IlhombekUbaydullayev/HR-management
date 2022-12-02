@@ -1,13 +1,11 @@
 package com.example.hrmanagement
 
 import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.enums.SecuritySchemeType
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
-import io.swagger.v3.oas.annotations.security.SecurityScheme
 import org.springframework.http.HttpEntity
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -18,7 +16,7 @@ import javax.servlet.http.HttpServletRequest
 import javax.validation.Valid
 
 @RestController
-@RequestMapping("api/v1/auth")
+@RequestMapping("/api/v1/auth")
 class AuthController(
     private var authService: AuthService
 ) {
@@ -46,7 +44,7 @@ class AuthController(
 }
 
 @RestController
-@RequestMapping("api/v1/auth")
+@RequestMapping("/api/v1/auth")
 class CompanyController(
     private var companyService: CompanyService
 ) {
@@ -66,7 +64,7 @@ class CompanyController(
 }
 
 @RestController
-@RequestMapping("api/v1/auth")
+@RequestMapping("/api/v1/user")
 class UserController(
     private var userService: UserService
 ){
@@ -83,4 +81,33 @@ class UserController(
         val userAdd = userService.addUser(userDto,request)
         return ResponseEntity.status(if (userAdd.success) 200 else 409).body(userAdd)
     }
+
+    @Operation(summary = "Get all", security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = UserResponseDto::class))]),
+            ApiResponse(responseCode = "400", description = "Such a company does not exist"),
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @GetMapping("getAll")
+    fun getAll(request: HttpServletRequest) = userService.getAll(request)
+}
+
+@RestController
+@RequestMapping("/api/v1/task")
+class TaskController(
+    private var taskService: TaskService
+){
+
+    @Operation(summary = "Create",security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+            ApiResponse(responseCode = "400", description = "Such a task does not exist",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER')")
+    @PostMapping("create")
+    fun create(@Validated @RequestBody taskCreateDto: TaskCreateDto,request : HttpServletRequest) = taskService.create(taskCreateDto,request)
 }

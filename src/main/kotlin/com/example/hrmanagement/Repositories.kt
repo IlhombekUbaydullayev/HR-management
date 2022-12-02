@@ -34,6 +34,13 @@ interface CompanyUserRepository : BaseRepository<CompanyUser> {
 interface UserRepository : BaseRepository<User>{
     fun findByEmail(email: String): Optional<User>
     fun existsByEmail(email: String) : Boolean
+    fun existsByIdAndDeletedFalse(id: Long):Boolean
     fun existsByEmailAndDeletedFalse(email: String) : Boolean
     fun findByIdAndDeletedFalse(id: Long) : Optional<User>
+    fun getAllBySystemRoleNameAndDeletedFalse(systemRoleName: CompanyRoleName):List<User>
+    fun getAllByDeletedFalse():List<User>
+}
+
+interface TaskRepository : BaseRepository<Task>{
+    fun existsByNameAndDeletedFalse(name: String):Boolean
 }

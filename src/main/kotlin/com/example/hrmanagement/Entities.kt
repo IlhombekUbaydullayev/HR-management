@@ -135,8 +135,7 @@ data class CompanyUser(
 data class Task(
     var name : String,
     var comment : String,
-    var assigment_date : String,
-    @Column( nullable = false, length = 15)
+    var assigment_date : Date,
     @Enumerated(EnumType.STRING) var status: ProjectStatus = ProjectStatus.TODO,
     @ManyToMany
     var user_id : Set<User>

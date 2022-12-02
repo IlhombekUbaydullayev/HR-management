@@ -84,6 +84,31 @@ data class UserDto(
 }
 
 data class VerifyDTO (
-    @field:NotNull
+    @field:NotNull(message = "password must not be empty")
     val password: String
 )
+
+data class TaskCreateDto(
+    @field:NotNull(message = "name must not be empty")
+    @field:Size(min = 3)
+    var name: String,
+    var description: String?,
+    @field:NotNull(message = "date must not be empty")
+    var lifetime: Date,
+    var userId : Long,
+    var status: ProjectStatus = ProjectStatus.TODO,
+)
+
+data class UserResponseDto(
+    var id : Long,
+    var fullName : String,
+    var email : String,
+    var systemRoleName: CompanyRoleName?
+)
+{
+    companion object {
+        fun toDto(u:User) = u.run {
+            UserResponseDto(id!!,fullName,email,systemRoleName)
+        }
+    }
+}

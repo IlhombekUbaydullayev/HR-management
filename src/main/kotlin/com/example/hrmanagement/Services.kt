@@ -1,7 +1,5 @@
 package com.example.hrmanagement
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
@@ -32,6 +30,11 @@ interface CompanyService {
 
 interface UserService {
     fun addUser(userDto: UserDto, request: HttpServletRequest): ApiResponsess
+    fun getAll(request: HttpServletRequest):List<UserResponseDto>
+}
+
+interface TaskService {
+    fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest):BaseMessage
 }
 
 @Service
@@ -244,6 +247,12 @@ class UserServiceImp(
         return ApiResponsess("", false)
     }
 
+    override fun getAll(request: HttpServletRequest): List<UserResponseDto> {
+        if (request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name))
+            return userRepository.getAllBySystemRoleNameAndDeletedFalse(CompanyRoleName.ROLE_USER).map { UserResponseDto.toDto(it) }
+        return userRepository.getAllByDeletedFalse().map { UserResponseDto.toDto(it) }
+    }
+
     fun sendEmail(sendingEmail: String, emailCode: String): Boolean {
         try {
             val mimeMessage: MimeMessage = javaMailSender.createMimeMessage()
@@ -258,4 +267,22 @@ class UserServiceImp(
             return false
         }
     }
+}
+
+@Service
+class TaskServiceImp(
+    private var taskRepository: TaskRepository,
+    private var userRepository: UserRepository
+): TaskService{
+    override fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest): BaseMessage {
+        taskCreateDto.apply {
+            if(request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name) || request.isUserInRole(CompanyRoleName.ROLE_MANAGER.name)) {
+
+            }
+            userRepository.existsByIdAndDeletedFalse(userId).throwIfFalse { ObjectNotFoundException() }
+            taskRepository.save(Task(name,description!!,lifetime,status, setOf(userRepository.findById(userId).get())))
+        }
+        return BaseMessage.OK
+    }
+
 }
