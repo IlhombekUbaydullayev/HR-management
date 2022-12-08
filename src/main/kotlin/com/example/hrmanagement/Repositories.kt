@@ -24,23 +24,29 @@ interface CompanyRepository : BaseRepository<Company>{
     fun existsByName(name: String):Boolean
     fun findByIdAndDeletedFalse(id: Long) : Optional<Company>
     fun getAllByDeletedFalse(): List<Company>
+    fun findByName(name: String):Optional<Company>
 }
 
-interface CompanyRoleRepository : BaseRepository<CompanyRole>
+interface CompanyRoleRepository : BaseRepository<CompanyRole> {
+    fun findByName(name: String):Optional<CompanyRole>
+}
 
 interface CompanyUserRepository : BaseRepository<CompanyUser> {
+//    fun findAllByWorkspaceNameAndDeletedFalse(workspace_name: String) : List<CompanyUser>
+    fun findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+    workspace_name: String,
+    user_systemRoleName: CompanyRoleName
+) : List<CompanyUser>
+    fun findByUserEmail(user_email: String) : Optional<CompanyUser>
 }
 
 interface UserRepository : BaseRepository<User>{
     fun findByEmail(email: String): Optional<User>
     fun existsByEmail(email: String) : Boolean
-    fun existsByIdAndDeletedFalse(id: Long):Boolean
     fun existsByEmailAndDeletedFalse(email: String) : Boolean
     fun findByIdAndDeletedFalse(id: Long) : Optional<User>
-    fun getAllBySystemRoleNameAndDeletedFalse(systemRoleName: CompanyRoleName):List<User>
-    fun getAllByDeletedFalse():List<User>
 }
 
 interface TaskRepository : BaseRepository<Task>{
-    fun existsByNameAndDeletedFalse(name: String):Boolean
+    fun getAllByDeletedFalse():List<Task>
 }

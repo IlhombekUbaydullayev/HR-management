@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.servlet.function.RequestPredicates.*
 import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 import javax.validation.Valid
 
 @RestController
@@ -27,18 +28,18 @@ class AuthController(
     }
 
     @GetMapping("verifyEmail")
-    fun verifyEmail(@RequestParam emailCode: String, @RequestParam email: String): HttpEntity<Any> {
-        val apiResponse: ApiResponsess = authService.getVerifyEmail(emailCode, email)
-        return ResponseEntity.status(if (apiResponse.success) 200 else 409).body(apiResponse)
+    fun verifyEmail(@RequestParam emailCode: String, @RequestParam email: String,response: HttpServletResponse): String {
+        return "login"
     }
 
     @PostMapping("verifyEmail")
     fun verifyEmail(
         @RequestParam email: String,
         @RequestParam emailCode: String,
+        @RequestParam company : String,
         @RequestBody verifyDTO: VerifyDTO
     ): HttpEntity<Any> {
-        val apiResponse: ApiResponsess = authService.verifyEmail(email, emailCode, verifyDTO)
+        val apiResponse: ApiResponsess = authService.verifyEmail(email, emailCode,company,verifyDTO)
         return ResponseEntity.status(if (apiResponse.success) 200 else 409).body(apiResponse)
     }
 }
@@ -89,7 +90,7 @@ class UserController(
             ApiResponse(responseCode = "400", description = "Such a company does not exist"),
         ]
     )
-    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER')")
     @GetMapping("getAll")
     fun getAll(request: HttpServletRequest) = userService.getAll(request)
 }
@@ -110,4 +111,17 @@ class TaskController(
     @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER')")
     @PostMapping("create")
     fun create(@Validated @RequestBody taskCreateDto: TaskCreateDto,request : HttpServletRequest) = taskService.create(taskCreateDto,request)
+
+    @Operation(summary = "Get all", security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = UserResponseDto::class))]),
+            ApiResponse(responseCode = "400", description = "Such a company does not exist"),
+        ]
+    )
+
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER','ROLE_USER')")
+    @GetMapping("getAll")
+    fun getAll() = taskService.getAll()
 }
+

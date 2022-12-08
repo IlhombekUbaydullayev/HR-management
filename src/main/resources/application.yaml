@@ -15,11 +15,18 @@ spring:
   mail:
     properties:
       mail:
+        transport:
+          protocol: smtp
         smtp:
           auth: true
+          starttls:
+            enable: true
+        debug: true
     protocol: smtp
-    host: 8090
-    port: 80
+    host: smtp.gmail.com
+    port: 587
+    username: ubaydullaevilhombek681@gmail.com
+    password: kcrxhewxvscyhysm
   sql:
     init:
       platform: postgres

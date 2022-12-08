@@ -36,7 +36,7 @@ class AuditingConfig {
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
-class SecurityConfig @Autowired constructor(
+class SecurityConfig (
     @Lazy private val authService: AuthServiceImp
 ): WebSecurityConfigurerAdapter(){
 
@@ -47,7 +47,7 @@ class SecurityConfig @Autowired constructor(
             .csrf().disable()
             .httpBasic().disable()
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().authorizeRequests()
-            .antMatchers("/**","/api/v1/auth/company","/api/v1/auth/verifyEmail","/ui/**","/api/doc/**","/api/v1/auth/login").permitAll()
+            .antMatchers("/**","/api/v1/auth/company","/api/v1/auth/verifyEmail","/ui/**","/api/doc/**","/api/v1/auth/login","/api/v1/user/**").permitAll()
             .anyRequest().authenticated()
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
 
@@ -70,20 +70,20 @@ class SecurityConfig @Autowired constructor(
         auth.userDetailsService(authService).passwordEncoder(passwordEncoder())
     }
 
-    @Bean
-    fun javaMailSender(): JavaMailSender? {
-        val mailSender = JavaMailSenderImpl()
-        mailSender.host = "smtp.gmail.com"
-        mailSender.port = 587
-        mailSender.username = "ubaydullaevilhombek681@gmail.com"
-        mailSender.password = "kcrxhewxvscyhysm"
-        val props: Properties = mailSender.javaMailProperties
-        props["mail.transport.protocol"] = "smtp"
-        props["mail.smtp.auth"] = "true"
-        props["mail.smtp.starttls.enable"] = "true"
-        props["mail.debug"] = "true"
-        return mailSender
-    }
+//    @Bean
+//    fun javaMailSender(): JavaMailSender? {
+//        val mailSender = JavaMailSenderImpl()
+//        mailSender.host = "smtp.gmail.com"
+//        mailSender.port = 587
+//        mailSender.username = "ubaydullaevilhombek681@gmail.com"
+//        mailSender.password = "kcrxhewxvscyhysm"
+//        val props: Properties = mailSender.javaMailProperties
+//        props["mail.transport.protocol"] = "smtp"
+//        props["mail.smtp.auth"] = "true"
+//        props["mail.smtp.starttls.enable"] = "true"
+//        props["mail.debug"] = "true"
+//        return mailSender
+//    }
 }
 @Configuration
 @io.swagger.v3.oas.annotations.security.SecurityScheme(

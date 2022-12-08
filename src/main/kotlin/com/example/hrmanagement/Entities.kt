@@ -40,6 +40,7 @@ abstract class AbsMainEntity {
 }
 
 @Entity(name = "users")
+@EqualsAndHashCode(callSuper = true)
 data class User(
     val fullName: String,
     @field:Column(unique = true, nullable = false)
@@ -126,19 +127,21 @@ data class CompanyUser(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     var workspaceRole: CompanyRole? = null,
 
-    @Column(nullable = false)
-    val dateInvited: Timestamp? = null,
-    var dateJoined: Timestamp? = null
+//    @Column(nullable = false)
+//    val dateInvited: Timestamp? = null,
+//    var dateJoined: Timestamp? = null
 ) : AbsLongEntity()
 
 @Entity
 data class Task(
     var name : String,
     var comment : String,
-    var assigment_date : Date,
+    var lifeTime : Date? = null,
     @Enumerated(EnumType.STRING) var status: ProjectStatus = ProjectStatus.TODO,
+    @ManyToOne
+    var responsible : User? = null,
     @ManyToMany
-    var user_id : Set<User>
+    var user_id : Set<User> ? = null
 ) : AbsLongEntity()
 
 @Entity

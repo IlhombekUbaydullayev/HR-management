@@ -1,8 +1,5 @@
 package com.example.hrmanagement
 
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
@@ -11,14 +8,14 @@ import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
-import java.sql.Timestamp
-import java.util.ArrayList
-import javax.mail.internet.MimeMessage
+import java.util.*
 import javax.servlet.http.HttpServletRequest
+import kotlin.collections.ArrayList
+import kotlin.collections.HashSet
 
 interface AuthService {
     fun login(loginDTO: LoginDTO): ApiResponsess
-    fun verifyEmail(email: String, emailCode: String, verifyDTO: VerifyDTO): ApiResponsess
+    fun verifyEmail(email: String, emailCode: String, company: String, verifyDTO: VerifyDTO): ApiResponsess
     fun getVerifyEmail(emailCode: String, email: String): ApiResponsess
 }
 
@@ -30,11 +27,12 @@ interface CompanyService {
 
 interface UserService {
     fun addUser(userDto: UserDto, request: HttpServletRequest): ApiResponsess
-    fun getAll(request: HttpServletRequest):List<UserResponseDto>
+    fun getAll(request: HttpServletRequest):List<UserDtoSec>
 }
 
 interface TaskService {
     fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest):BaseMessage
+    fun getAll():List<TaskResponseDto>
 }
 
 @Service
@@ -42,7 +40,10 @@ class AuthServiceImp(
     private var authenticationManager: AuthenticationManager,
     private var userRepository: UserRepository,
     private var passwordEncoder: PasswordEncoder,
-    private var jwtProvider: JwtProvider
+    private var jwtProvider: JwtProvider,
+    private var companyUserRepository: CompanyUserRepository,
+    private var companyRepository: CompanyRepository,
+    private var companyRoleRepository: CompanyRoleRepository
 ) : AuthService, UserDetailsService {
 
     override fun login(loginDTO: LoginDTO): ApiResponsess {
@@ -61,18 +62,23 @@ class AuthServiceImp(
         }
     }
 
-    override fun verifyEmail(email: String, emailCode: String, verifyDTO: VerifyDTO): ApiResponsess {
+    override fun verifyEmail(email: String, emailCode: String, company: String, verifyDTO: VerifyDTO): ApiResponsess {
         userRepository.existsByEmailAndDeletedFalse(email).throwIfFalse { EmailException() }
         val optionalUser = userRepository.findByEmail(email)
         if (optionalUser.isPresent) {
             val user = optionalUser.get()
-            if (emailCode == user.fullName) {
+            if (emailCode == user.fullName && !user.enabled) {
                 user.enabled = true
                 user.passwords = passwordEncoder.encode(verifyDTO.password)
+                val decodedString: String = String(Base64.getDecoder().decode(company))
+                companyRepository.existsByName(decodedString).throwIfFalse { ObjectNotFoundException() }
+                val comp = companyRepository.findByName(decodedString).get()
+                val users = companyRoleRepository.findById(user.id!!).get()
                 userRepository.save(user)
+                companyUserRepository.save(CompanyUser(comp,user,users))
                 return ApiResponsess("Acount aktivlashtirildi", true)
             }
-            return ApiResponsess("Kod xato", false)
+            return ApiResponsess("Already reported", false)
         }
         return ApiResponsess("Bunday user mavjud emas", false)
     }
@@ -104,11 +110,10 @@ class CompanyServiceImpl(
     private var companyRepository: CompanyRepository,
     private var companyRoleRepository: CompanyRoleRepository,
     private var companyPermissionRepository: CompanyPermissionRepository,
-    private var companyUserRepository: CompanyUserRepository
+    private var companyUserRepository: CompanyUserRepository,
+    private var passwordEncoder: PasswordEncoder,
+    private var emails: Emails
 ) : CompanyService {
-
-    @Autowired
-    lateinit var javaMailSender: JavaMailSender
 
     override fun addCompany(companyDto: CompanyDto): BaseMessage {
         companyRepository.existsByName(companyDto.name!!).throwIfTrue { AlreadyReportedException() }
@@ -118,7 +123,8 @@ class CompanyServiceImpl(
         val user = User(
             companyDto.full_name!!, companyDto.email!!, "", CompanyRoleName.ROLE_DIRECTOR
         )
-        sendEmail(user.email, user.fullName).throwIfFalse { EmailException() }
+        val encodedString: String = Base64.getEncoder().encodeToString(companyDto.name!!.toByteArray())
+        emails.sendEmail(user.email, user.fullName,encodedString).throwIfFalse { EmailException() }
         val company = Company(
             companyDto.name!!,
             user
@@ -174,15 +180,15 @@ class CompanyServiceImpl(
         companyPermissionRepository.saveAll(companyPermissions)
 
         //Company User Added
-        companyUserRepository.save(
-            CompanyUser(
-                company,
-                user,
-                director,
-                Timestamp(System.currentTimeMillis()),
-                Timestamp(System.currentTimeMillis())
-            )
-        )
+//        companyUserRepository.save(
+//            CompanyUser(
+//                company,
+//                user,
+//                director,
+//                Timestamp(System.currentTimeMillis()),
+//                Timestamp(System.currentTimeMillis())
+//            )
+//        )
         return BaseMessage.OK
     }
 
@@ -199,33 +205,23 @@ class CompanyServiceImpl(
 
     override fun getAll() = companyRepository.getAllByDeletedFalse().map { CompanyResponseDto.toDto(it) }
 
-
-    fun sendEmail(sendingEmail: String, emailCode: String): Boolean {
-        try {
-            val mimeMessage: MimeMessage = javaMailSender.createMimeMessage()
-            val mimeMessageHelper = MimeMessageHelper(mimeMessage, true)
-            mimeMessageHelper.setFrom("ubaydullaevilhombek681@gmail.com")
-            mimeMessageHelper.setTo(sendingEmail)
-            mimeMessageHelper.setSubject("Accountni Tasdiqlash")
-            mimeMessageHelper.setText("<a href='http://localhost:8090/api/v1/auth/verifyEmail?emailCode=$emailCode&email=$sendingEmail'>Tasdiqlang</a>")
-            javaMailSender.send(mimeMessage)
-            return true
-        } catch (e: Exception) {
-            return false
-        }
-    }
 }
 
 @Service
 class UserServiceImp(
     private var userRepository: UserRepository,
     private var companyRoleRepository: CompanyRoleRepository,
-    private var javaMailSender: JavaMailSender,
-    private var companyUserRepository : CompanyUserRepository
+    private var companyUserRepository : CompanyUserRepository,
+    private var passwordEncoder: PasswordEncoder,
+    private var companyRepository: CompanyRepository,
+    private var emails: Emails
 ) : UserService {
     override fun addUser(userDto: UserDto, request: HttpServletRequest): ApiResponsess {
         if (request.isUserInRole(CompanyRoleName.ROLE_DIRECTOR.name)) {
-            sendEmail(userDto.email,userDto.full_name!!).throwIfFalse { EmailException() }
+            val use = userRepository.findByEmail(request.remoteUser)
+            val id = companyUserRepository.findById(use.get().id!!)
+            val encodedString: String = Base64.getEncoder().encodeToString(id.get().workspace!!.name.toByteArray())
+            emails.sendEmail(userDto.email,userDto.full_name!!,encodedString).throwIfFalse { EmailException() }
             if (userDto.systemRoleName?.name == "ROLE_USER") userDto.systemRoleName = CompanyRoleName.ROLE_HR_MANAGER
             val user = User(
                 userDto.full_name!!, userDto.email, "", userDto.systemRoleName
@@ -235,7 +231,8 @@ class UserServiceImp(
             return ApiResponsess("ROLE_DIRECTOR", true)
         }
         if (request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name)) {
-            sendEmail(userDto.email,userDto.full_name!!).throwIfFalse { EmailException() }
+//            val encodedString: String = Base64.getEncoder().encodeToString(id.get().workspace!!.name.toByteArray())
+            emails.sendEmail(userDto.email,userDto.full_name!!,companyUserRepository.findById(userRepository.findByEmail(request.remoteUser).get().id!!).get().workspace!!.name).throwIfFalse { EmailException() }
             if (userDto.systemRoleName?.name == "ROLE_DIRECTOR") return ApiResponsess("error message", false)
             val user = User(
                 userDto.full_name!!, userDto.email, ""
@@ -247,26 +244,12 @@ class UserServiceImp(
         return ApiResponsess("", false)
     }
 
-    override fun getAll(request: HttpServletRequest): List<UserResponseDto> {
-        if (request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name))
-            return userRepository.getAllBySystemRoleNameAndDeletedFalse(CompanyRoleName.ROLE_USER).map { UserResponseDto.toDto(it) }
-        return userRepository.getAllByDeletedFalse().map { UserResponseDto.toDto(it) }
+    override fun getAll(request: HttpServletRequest): List<UserDtoSec> {
+         if (request.isUserInRole(CompanyRoleName.ROLE_DIRECTOR.name))
+            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_HR_MANAGER).map { UserDtoSec.toDto(it.user!!) }
+        return listOf()
     }
 
-    fun sendEmail(sendingEmail: String, emailCode: String): Boolean {
-        try {
-            val mimeMessage: MimeMessage = javaMailSender.createMimeMessage()
-            val mimeMessageHelper = MimeMessageHelper(mimeMessage, true)
-            mimeMessageHelper.setFrom("ubaydullaevilhombek681@gmail.com")
-            mimeMessageHelper.setTo(sendingEmail)
-            mimeMessageHelper.setSubject("Accountni Tasdiqlash")
-            mimeMessageHelper.setText("<a href='http://localhost:8090/api/v1/auth/verifyEmail?emailCode=$emailCode&email=$sendingEmail'>Tasdiqlang</a>")
-            javaMailSender.send(mimeMessage)
-            return true
-        } catch (e: Exception) {
-            return false
-        }
-    }
 }
 
 @Service
@@ -276,13 +259,17 @@ class TaskServiceImp(
 ): TaskService{
     override fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest): BaseMessage {
         taskCreateDto.apply {
-            if(request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name) || request.isUserInRole(CompanyRoleName.ROLE_MANAGER.name)) {
-
+            val set = HashSet<User>()
+            taskCreateDto.userId.forEach {
+                taskRepository.existsById(it).throwIfFalse { ObjectNotFoundException() }
+                userRepository.existsById(it).throwIfFalse { ObjectNotFoundException() }
+                set.add(userRepository.findByIdAndDeletedFalse(it).get())
             }
-            userRepository.existsByIdAndDeletedFalse(userId).throwIfFalse { ObjectNotFoundException() }
-            taskRepository.save(Task(name,description!!,lifetime,status, setOf(userRepository.findById(userId).get())))
+            taskRepository.save(Task(name,description!!,lifetime,status,userRepository.findByEmail(request.remoteUser).get(),set))
         }
         return BaseMessage.OK
     }
+
+    override fun getAll(): List<TaskResponseDto> = taskRepository.getAllByDeletedFalse().map { TaskResponseDto.toDto(it) }
 
 }

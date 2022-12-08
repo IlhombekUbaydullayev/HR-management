@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import java.util.*
 import javax.persistence.Column
 import javax.validation.constraints.*
+import kotlin.collections.HashSet
 
 
 data class ApiResponsess(
@@ -50,9 +51,9 @@ data class CompanyDtoUpdate(
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class CompanyResponseDto(
-    var id : Long,
-    var name : String,
-    var owner : UserDto
+    var id: Long,
+    var name: String,
+    var owner: UserDto
 ){
     companion object{
         fun toDto(c : Company) = c.run {
@@ -77,9 +78,26 @@ data class UserDto(
 )
 {
     companion object{
-        fun toDto(u : User) = u.run {
+        fun toDto(u: User) = u.run {
             UserDto(id!!,fullName,email,systemRoleName)
         }
+    }
+}
+
+data class UserDtoSec(
+    var id : Long,
+    var full_name : String?,
+    @get:Email
+    @Column(unique = true, nullable = false)
+    var email : String,
+    var systemRoleName: CompanyRoleName? = CompanyRoleName.ROLE_USER
+)
+{
+    companion object {
+        fun toDto(u:User) = u.run {
+            UserDtoSec(id!!,fullName,email,systemRoleName)
+        }
+
     }
 }
 
@@ -95,7 +113,7 @@ data class TaskCreateDto(
     var description: String?,
     @field:NotNull(message = "date must not be empty")
     var lifetime: Date,
-    var userId : Long,
+    var userId : Set<Long>,
     var status: ProjectStatus = ProjectStatus.TODO,
 )
 
@@ -109,6 +127,24 @@ data class UserResponseDto(
     companion object {
         fun toDto(u:User) = u.run {
             UserResponseDto(id!!,fullName,email,systemRoleName)
+        }
+    }
+}
+
+data class TaskResponseDto(
+    var id: Long,
+    var name: String,
+    var comment: String,
+    var lifeTime: Date? = null,
+    var user_id: Set<UserDtoSec>? = null,
+    var status: ProjectStatus = ProjectStatus.TODO,
+    var responsible: UserDto? = null
+)
+{
+    companion object{
+        fun toDto(t:Task) = t.run {
+            TaskResponseDto(id!!,name,comment,lifeTime, user_id!!.map { UserDtoSec.toDto(it) }.toSet(),status,
+                responsible?.let { UserDto.toDto(it) })
         }
     }
 }
