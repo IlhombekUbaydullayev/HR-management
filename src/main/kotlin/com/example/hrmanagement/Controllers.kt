@@ -73,7 +73,7 @@ class UserController(
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = UserDto::class))]),
-            ApiResponse(responseCode = "400", description = "Such a company does not exist"),
+            ApiResponse(responseCode = "400", description = "Such a user does not exist"),
         ]
     )
     @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
@@ -87,12 +87,58 @@ class UserController(
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = UserResponseDto::class))]),
-            ApiResponse(responseCode = "400", description = "Such a company does not exist"),
+            ApiResponse(responseCode = "400", description = "Such a user does not exist"),
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @GetMapping("getAll")
+    fun getAll(request: HttpServletRequest) = userService.getAll(request)
+
+    @Operation(summary = "Get all task users", security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = UserResponseDto::class))]),
+            ApiResponse(responseCode = "400", description = "Such a user does not exist"),
         ]
     )
     @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER')")
-    @GetMapping("getAll")
-    fun getAll(request: HttpServletRequest) = userService.getAll(request)
+    @GetMapping("getAll/tasks")
+    fun getAllTaskUsers(request: HttpServletRequest) = userService.getAllTask(request)
+
+    @Operation(summary = "Delete",security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+            ApiResponse(responseCode = "400", description = "Such a user does not exist",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @DeleteMapping("{id}")
+    fun delete(@PathVariable id: Long) = userService.delete(id)
+
+    @Operation(summary = "Update",security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+            ApiResponse(responseCode = "400", description = "Such a user does not exist",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @PutMapping("{id}")
+    fun update(@PathVariable id: Long,@RequestBody dto : CompanyUserUpdateDto) = userService.update(id,dto)
+
+    @Operation(summary = "Get by id",security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+            ApiResponse(responseCode = "400", description = "Such a user does not exist",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @GetMapping("{id}")
+    fun getById(@PathVariable id: Long) = userService.getById(id)
+
+
 }
 
 @RestController
@@ -116,12 +162,66 @@ class TaskController(
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = UserResponseDto::class))]),
-            ApiResponse(responseCode = "400", description = "Such a company does not exist"),
+            ApiResponse(responseCode = "400", description = "Such a task does not exist"),
         ]
     )
 
     @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER','ROLE_USER')")
     @GetMapping("getAll")
     fun getAll() = taskService.getAll()
+
+    @GetMapping("get/api")
+    fun getApi(
+        @RequestParam name : String,
+        @RequestParam description : String,
+        @RequestParam lifetime : String,
+        @RequestParam responsible : String,
+        @RequestParam user_id : String,
+        @RequestParam random2 : Long
+    ) = taskService.getApi(name,description,lifetime,responsible,user_id,random2)
+
+    @Operation(summary = "Send Task", security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+            ApiResponse(responseCode = "400", description = "Such a task does not exist"),
+        ]
+    )
+
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR','ROLE_MANAGER','ROLE_USER')")
+    @PostMapping("send/{id}")
+    fun sendTask(
+        @PathVariable id : Long,@RequestBody dto : TaskDto,request: HttpServletRequest
+    ) = taskService.sendTask(id,dto,request)
+
+
+    @GetMapping("{id}")
+    fun getById(@PathVariable id: Long) = taskService.getById(id)
 }
 
+@RestController
+@RequestMapping("api/v1/controller")
+class Controllers{
+    fun create(){
+
+    }
+}
+
+@RestController
+@RequestMapping("api/v1/salary")
+class SalaryController(
+    private var salaryService: SalaryService
+){
+
+    @Operation(summary = "Create salary", security = [SecurityRequirement(name = "Bearer Authentication")])
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "200", description = "Successful Operation",content = [Content(mediaType = "application/json", schema = Schema(implementation = BaseMessage::class))]),
+            ApiResponse(responseCode = "400", description = "Such a salary does not exist"),
+        ]
+    )
+
+    @PreAuthorize("hasAnyRole('ROLE_HR_MANAGER','ROLE_DIRECTOR')")
+    @PostMapping("create")
+    fun create(@RequestBody salaryDto: SalaryDto) = salaryService.create(salaryDto)
+}

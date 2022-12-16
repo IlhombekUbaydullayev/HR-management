@@ -2,10 +2,10 @@ package com.example.hrmanagement
 
 import com.fasterxml.jackson.annotation.*
 import io.swagger.v3.oas.annotations.media.Schema
+import java.sql.Timestamp
 import java.util.*
 import javax.persistence.Column
 import javax.validation.constraints.*
-import kotlin.collections.HashSet
 
 
 data class ApiResponsess(
@@ -90,14 +90,27 @@ data class UserDtoSec(
     @get:Email
     @Column(unique = true, nullable = false)
     var email : String,
-    var systemRoleName: CompanyRoleName? = CompanyRoleName.ROLE_USER
+    var systemRoleName: CompanyRoleName? = CompanyRoleName.ROLE_USER,
+    var companyUserId: Long? = null
 )
 {
     companion object {
         fun toDto(u:User) = u.run {
             UserDtoSec(id!!,fullName,email,systemRoleName)
         }
+    }
+}
 
+data class CompanyUserDto(
+    var companyUserId: Long?,
+    var name : String,
+    var user : UserDtoSec
+)
+{
+    companion object{
+        fun toDto(c:CompanyUser) = c.run {
+            CompanyUserDto(id,workspace!!.name,UserDtoSec.toDto(user!!))
+        }
     }
 }
 
@@ -131,6 +144,17 @@ data class UserResponseDto(
     }
 }
 
+data class UserControlDto(
+    var task : TaskResponseDto? = null
+)
+{
+    companion object{
+        fun toDto(j: Task) = j.run {
+            UserControlDto(task = TaskResponseDto.toDto(j))
+        }
+    }
+}
+
 data class TaskResponseDto(
     var id: Long,
     var name: String,
@@ -143,8 +167,52 @@ data class TaskResponseDto(
 {
     companion object{
         fun toDto(t:Task) = t.run {
-            TaskResponseDto(id!!,name,comment,lifeTime, user_id!!.map { UserDtoSec.toDto(it) }.toSet(),status,
+            TaskResponseDto(id!!,name,comment,lifeTime, userId!!.map { UserDtoSec.toDto(it) }.toSet(),status,
                 responsible?.let { UserDto.toDto(it) })
         }
     }
 }
+
+data class TaskEmailResponseDto(
+    var id: Long,
+    var name: String,
+    var description: String,
+    var lifetime: String,
+    var responsible: String,
+    var userId: String,
+    var random2: Long
+)
+
+data class TaskDto(
+    var localeDate : String,
+    var projectStatus : ProjectStatus
+)
+
+data class CompanyUserUpdateDto(
+    var userName : String? = null,
+    var userEmail : String? = null,
+    var userPassword : String? = null,
+    var companyUserRole : CompanyRoleName? = null
+)
+
+data class CompanyUserResponseDto(
+    var id : Long? = null,
+    var companyName : String? = null,
+    var companyUserRole : CompanyRoleName? = CompanyRoleName.ROLE_USER,
+    var userName : String? = null,
+    var userEmail : String? = null,
+    var userPassword : String? = null
+)
+{
+    companion object{
+        fun toDto(c : CompanyUser) = c.run {
+            CompanyUserResponseDto(id,workspace?.name,user?.systemRoleName,user?.fullName,user?.email,user?.password)
+        }
+    }
+}
+
+data class SalaryDto(
+    var salary : Double,
+    var userId : Long,
+    var createDate : Timestamp
+)

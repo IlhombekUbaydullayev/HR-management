@@ -1,7 +1,9 @@
 package com.example.hrmanagement
 
 import lombok.EqualsAndHashCode
+import lombok.Value
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.ManyToAny
 import org.hibernate.annotations.UpdateTimestamp
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import org.springframework.security.core.GrantedAuthority
@@ -42,9 +44,9 @@ abstract class AbsMainEntity {
 @Entity(name = "users")
 @EqualsAndHashCode(callSuper = true)
 data class User(
-    val fullName: String,
+    var fullName: String,
     @field:Column(unique = true, nullable = false)
-    val email: String,
+    var email: String,
     var passwords: String = "",
     @Enumerated(EnumType.STRING)
     var systemRoleName: CompanyRoleName? = CompanyRoleName.ROLE_USER,
@@ -107,8 +109,8 @@ data class CompanyPermission(
 @EqualsAndHashCode(callSuper = true)
 @Entity
 data class CompanyRole(
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    val workspace: Company? = null,
+    @ManyToMany(fetch = FetchType.LAZY)
+    val workspace: List<Company>? = null,
     @Column(nullable = false)
     val name: String? = null,
     @Enumerated(EnumType.STRING)
@@ -122,14 +124,10 @@ data class CompanyUser(
     val workspace: Company? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    val user: User? = null,
+    var user: User? = null,
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    var workspaceRole: CompanyRole? = null,
-
-//    @Column(nullable = false)
-//    val dateInvited: Timestamp? = null,
-//    var dateJoined: Timestamp? = null
+    @ManyToOne(fetch = FetchType.LAZY)
+    var workspaceRole: CompanyRole? = null
 ) : AbsLongEntity()
 
 @Entity
@@ -141,12 +139,27 @@ data class Task(
     @ManyToOne
     var responsible : User? = null,
     @ManyToMany
-    var user_id : Set<User> ? = null
+    var userId : Set<User> ? = null,
+    @field:Column(nullable = false, unique = true)
+    var generic : Long,
 ) : AbsLongEntity()
 
 @Entity
-data class Tourniquet(
-    var enter_time : Timestamp,
-    var exit_time : Timestamp,
-    var status : Boolean
+data class Controller(
+    var enter_time : Date,
+    var exit_time : Date,
+    var status : Boolean,
+    @OneToOne(fetch = FetchType.LAZY)
+    var companyUser : CompanyUser? = null
+):AbsLongEntity()
+
+@Entity
+data class Salary(
+    var salary: Double? = null,
+    @OneToOne
+    var companyUser : CompanyUser,
+    @Column(updatable = false)
+    @CreationTimestamp
+    val createSalary: Timestamp? = null,
+    val month: Int? = null
 ):AbsLongEntity()
