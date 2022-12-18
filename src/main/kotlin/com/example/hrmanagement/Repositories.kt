@@ -2,9 +2,11 @@ package com.example.hrmanagement
 
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
+import org.springframework.data.jpa.repository.Query
 import org.springframework.data.jpa.repository.support.JpaEntityInformation
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.data.repository.NoRepositoryBean
+import org.springframework.data.repository.query.Param
 import java.sql.Timestamp
 import java.util.*
 import javax.persistence.EntityManager
@@ -56,9 +58,14 @@ interface TaskRepository : BaseRepository<Task>{
     fun getAllByDeletedFalse():List<Task>
     fun getByGeneric(generic: Long):Optional<Task>
     fun findByGeneric(generic: Long):Optional<Task>
-    fun findTasksByUserId(userId: MutableSet<User>):List<Task>
+    @Query("select t from Task t join t.userId u where u.id = :id")
+    fun findAllByUserId(@Param("id") id: Long):List<Task>
+    @Query("select t from Task t join t.userId u where u.id = :id")
+    fun findByUserId(@Param("id") id: Long):List<Optional<Task>>
 }
 
 interface SalaryRepository : BaseRepository<Salary>{
     fun findByMonthAndCompanyUserUserOrderById(createSalary_month: Int, companyUser_user: User):Optional<Salary>
+    @Query("select s from Salary s join s.companyUser u where u.user.id = :id")
+    fun findAllByCompanyUserUserId(@Param("id") id : Long):List<Salary>
 }

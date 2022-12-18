@@ -22,29 +22,38 @@ interface AuthService {
 interface CompanyService {
     fun addCompany(companyDto: CompanyDto): BaseMessage
     fun update(id: Long, companyDtoUpdate: CompanyDtoUpdate): BaseMessage
-    fun getAll() : List<CompanyResponseDto>
+    fun getAll(): List<CompanyResponseDto>
 }
 
 interface UserService {
     fun addUser(userDto: UserDto, request: HttpServletRequest): ApiResponsess
-    fun getAll(request: HttpServletRequest):List<UserDtoSec>
-    fun getAllTask(request: HttpServletRequest):List<CompanyUserDto>
+    fun getAll(request: HttpServletRequest): List<UserDtoSec>
+    fun getAllTask(request: HttpServletRequest): List<CompanyUserDto>
     fun delete(id: Long): BaseMessage
-    fun update(id: Long,dto : CompanyUserUpdateDto): CompanyUserResponseDto
-    fun getById(id: Long): UserControlDto
+    fun update(id: Long, dto: CompanyUserUpdateDto): CompanyUserResponseDto
+    fun getById(id: Long): List<UserControlDto>
 }
 
 interface TaskService {
-    fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest):BaseMessage
-    fun getAll():List<TaskResponseDto>
-    fun getApi(name: String, description: String, lifetime: String, responsible: String, userId: String, random2: Long): TaskEmailResponseDto
+    fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest): BaseMessage
+    fun getAll(): List<TaskResponseDto>
+    fun getApi(
+        name: String,
+        description: String,
+        lifetime: String,
+        responsible: String,
+        userId: String,
+        random2: Long
+    ): TaskEmailResponseDto
+
     fun sendTask(id: Long, dto: TaskDto, request: HttpServletRequest): BaseMessage
     fun getById(id: Long): Any
 }
 
-interface SalaryService{
-    fun create(salary: SalaryDto) : BaseMessage
+interface SalaryService {
+    fun create(salary: SalaryDto): BaseMessage
 }
+
 @Service
 class AuthServiceImp(
     private var authenticationManager: AuthenticationManager,
@@ -83,7 +92,7 @@ class AuthServiceImp(
                 val decodedString: String = String(Base64.getDecoder().decode(company))
                 companyRepository.existsByName(decodedString).throwIfFalse { ObjectNotFoundException() }
                 val comp = companyRepository.findByName(decodedString).get()
-                val users = companyRoleRepository.findByWorkspaceIdAndName(comp.id!!,user.systemRoleName!!.name).get()
+                val users = companyRoleRepository.findByWorkspaceIdAndName(comp.id!!, user.systemRoleName!!.name).get()
                 userRepository.save(user)
 
                 companyUserRepository.save(CompanyUser(comp, user, users))
@@ -135,8 +144,8 @@ class CompanyServiceImpl(
             companyDto.full_name!!, companyDto.email!!, "", CompanyRoleName.ROLE_DIRECTOR
         )
         val encodedString: String = Base64.getEncoder().encodeToString(companyDto.name!!.toByteArray())
-        emails.sendEmail(user.email, user.fullName,encodedString).throwIfFalse { EmailException() }
-        val company : MutableList<Company> = ArrayList()
+        emails.sendEmail(user.email, user.fullName, encodedString).throwIfFalse { EmailException() }
+        val company: MutableList<Company> = ArrayList()
         company.add(Company(companyDto.name!!, user))
         userRepository.save(user)
         companyRepository.saveAll(company)
@@ -217,9 +226,9 @@ class CompanyServiceImpl(
 class UserServiceImp(
     private var userRepository: UserRepository,
     private var companyRoleRepository: CompanyRoleRepository,
-    private var companyUserRepository : CompanyUserRepository,
+    private var companyUserRepository: CompanyUserRepository,
     private var taskRepository: TaskRepository,
-    private var companyRepository: CompanyRepository,
+    private var salaryRepository: SalaryRepository,
     private var emails: Emails
 ) : UserService {
     override fun addUser(userDto: UserDto, request: HttpServletRequest): ApiResponsess {
@@ -229,10 +238,11 @@ class UserServiceImp(
             val encodedString: String = Base64.getEncoder().encodeToString(id.get().workspace!!.name.toByteArray())
             if (userDto.systemRoleName?.name == "ROLE_USER") userDto.systemRoleName = CompanyRoleName.ROLE_HR_MANAGER
             val user = User(
-                userDto.full_name!!.replace(" ",""), userDto.email, "", userDto.systemRoleName
+                userDto.full_name!!.replace(" ", ""), userDto.email, "", userDto.systemRoleName
             )
             userRepository.existsByEmailAndDeletedFalse(userDto.email).throwIfTrue { AlreadyReportedException() }
-            emails.sendEmail(userDto.email,userDto.full_name!!.replace(" ",""),encodedString).throwIfFalse { EmailException() }
+            emails.sendEmail(userDto.email, userDto.full_name!!.replace(" ", ""), encodedString)
+                .throwIfFalse { EmailException() }
             userRepository.save(user)
             return ApiResponsess("ROLE_DIRECTOR", true)
         }
@@ -240,10 +250,11 @@ class UserServiceImp(
             val use = userRepository.findByEmailAndDeletedFalse(request.remoteUser)
             val id = companyUserRepository.findById(use.get().id!!)
             val encodedString: String = Base64.getEncoder().encodeToString(id.get().workspace!!.name.toByteArray())
-            emails.sendEmail(userDto.email,userDto.full_name!!.replace(" ",""),encodedString).throwIfFalse { EmailException() }
+            emails.sendEmail(userDto.email, userDto.full_name!!.replace(" ", ""), encodedString)
+                .throwIfFalse { EmailException() }
             if (userDto.systemRoleName?.name == "ROLE_DIRECTOR") return ApiResponsess("error message", false)
             val user = User(
-                userDto.full_name!!.replace(" ",""), userDto.email, ""
+                userDto.full_name!!.replace(" ", ""), userDto.email, ""
             )
             userRepository.existsByEmailAndDeletedFalse(userDto.email).throwIfTrue { AlreadyReportedException() }
             userRepository.save(user)
@@ -253,26 +264,59 @@ class UserServiceImp(
     }
 
     override fun getAll(request: HttpServletRequest): List<UserDtoSec> {
-         if (request.isUserInRole(CompanyRoleName.ROLE_DIRECTOR.name))
-            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_HR_MANAGER).map { UserDtoSec.toDto(it.user!!) } +
-                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_USER).map { UserDtoSec.toDto(it.user!!) } +
-                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_MANAGER).map { UserDtoSec.toDto(it.user!!) }
-         else if (request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name))
-             return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_USER).map { UserDtoSec.toDto(it.user!!) } +
-                     companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_MANAGER).map { UserDtoSec.toDto(it.user!!) }
+        if (request.isUserInRole(CompanyRoleName.ROLE_DIRECTOR.name))
+            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                CompanyRoleName.ROLE_HR_MANAGER
+            ).map { UserDtoSec.toDto(it.user!!) } +
+                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                        companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                        CompanyRoleName.ROLE_USER
+                    ).map { UserDtoSec.toDto(it.user!!) } +
+                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                        companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                        CompanyRoleName.ROLE_MANAGER
+                    ).map { UserDtoSec.toDto(it.user!!) }
+        else if (request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name))
+            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                CompanyRoleName.ROLE_USER
+            ).map { UserDtoSec.toDto(it.user!!) } +
+                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                        companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                        CompanyRoleName.ROLE_MANAGER
+                    ).map { UserDtoSec.toDto(it.user!!) }
         return listOf()
     }
 
     override fun getAllTask(request: HttpServletRequest): List<CompanyUserDto> {
         if (request.isUserInRole(CompanyRoleName.ROLE_DIRECTOR.name))
-            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_HR_MANAGER).map { CompanyUserDto.toDto(it) } +
-                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_USER).map { CompanyUserDto.toDto(it) } +
-                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_MANAGER).map { CompanyUserDto.toDto(it) }
+            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                CompanyRoleName.ROLE_HR_MANAGER
+            ).map { CompanyUserDto.toDto(it) } +
+                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                        companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                        CompanyRoleName.ROLE_USER
+                    ).map { CompanyUserDto.toDto(it) } +
+                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                        companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                        CompanyRoleName.ROLE_MANAGER
+                    ).map { CompanyUserDto.toDto(it) }
         else if (request.isUserInRole(CompanyRoleName.ROLE_HR_MANAGER.name))
-            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_USER).map { CompanyUserDto.toDto(it) } +
-                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_MANAGER).map { CompanyUserDto.toDto(it) }
+            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                CompanyRoleName.ROLE_USER
+            ).map { CompanyUserDto.toDto(it) } +
+                    companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                        companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                        CompanyRoleName.ROLE_MANAGER
+                    ).map { CompanyUserDto.toDto(it) }
         else if (request.isUserInRole(CompanyRoleName.ROLE_MANAGER.name))
-            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,CompanyRoleName.ROLE_USER).map { CompanyUserDto.toDto(it) }
+            return companyUserRepository.findAllByWorkspaceNameAndDeletedFalseAndUserSystemRoleName(
+                companyUserRepository.findByUserEmail(request.remoteUser).get().workspace!!.name,
+                CompanyRoleName.ROLE_USER
+            ).map { CompanyUserDto.toDto(it) }
         return listOf()
     }
 
@@ -299,12 +343,10 @@ class UserServiceImp(
         }
     }
 
-    override fun getById(id: Long):UserControlDto  {
-        val list : MutableSet<User> = mutableSetOf()
-        for (i in taskRepository.findById(id).get().userId!!) {
-//            return UserControlDto.toDto(taskRepository.findTaskByUserId(i.id!!)[0])
-        }
-        return UserControlDto()
+    override fun getById(id: Long): List<UserControlDto> {
+        return taskRepository.findAllByUserId(id)
+            .map { UserControlDto.toDto(it) } + salaryRepository.findAllByCompanyUserUserId(id)
+            .map { UserControlDto.doDto(it) }
     }
 
 }
@@ -315,7 +357,7 @@ class TaskServiceImp(
     private var userRepository: UserRepository,
     private var companyUserRepository: CompanyUserRepository,
     private var emails: Emails
-): TaskService{
+) : TaskService {
     override fun create(taskCreateDto: TaskCreateDto, request: HttpServletRequest): BaseMessage {
         taskCreateDto.apply {
             val set = HashSet<User>()
@@ -324,15 +366,32 @@ class TaskServiceImp(
 //                taskRepository.existsById(it).throwIfTrue { ObjectNotFoundException() }
                 companyUserRepository.existsById(it).throwIfFalse { ObjectNotFoundException() }
                 set.add(companyUserRepository.findByIdAndDeletedFalse(it).get().user!!)
-                emails.sendEmailTask(name,description!!,"${lifetime.year}:${lifetime.month}:${lifetime.day}",
-                    companyUserRepository.findByUserEmailAndDeletedFalse(request.remoteUser).get().user!!.email,companyUserRepository.findById(it).get().user!!.email,random2)
+                emails.sendEmailTask(
+                    name,
+                    description!!,
+                    "${lifetime.year}:${lifetime.month}:${lifetime.day}",
+                    companyUserRepository.findByUserEmailAndDeletedFalse(request.remoteUser).get().user!!.email,
+                    companyUserRepository.findById(it).get().user!!.email,
+                    random2
+                )
             }
-            taskRepository.save(Task(name,description!!,lifetime,status,companyUserRepository.findByUserEmailAndDeletedFalse(request.remoteUser).get().user,set,random2))
+            taskRepository.save(
+                Task(
+                    name,
+                    description!!,
+                    lifetime,
+                    status,
+                    companyUserRepository.findByUserEmailAndDeletedFalse(request.remoteUser).get().user,
+                    set,
+                    random2
+                )
+            )
         }
         return BaseMessage.OK
     }
 
-    override fun getAll(): List<TaskResponseDto> = taskRepository.getAllByDeletedFalse().map { TaskResponseDto.toDto(it) }
+    override fun getAll(): List<TaskResponseDto> =
+        taskRepository.getAllByDeletedFalse().map { TaskResponseDto.toDto(it) }
 
     override fun getApi(
         name: String,
@@ -342,14 +401,22 @@ class TaskServiceImp(
         userId: String,
         random2: Long
     ): TaskEmailResponseDto {
-        return TaskEmailResponseDto(taskRepository.getByGeneric(random2).get().id!!,name,description,lifetime,responsible,userId,random2)
+        return TaskEmailResponseDto(
+            taskRepository.getByGeneric(random2).get().id!!,
+            name,
+            description,
+            lifetime,
+            responsible,
+            userId,
+            random2
+        )
     }
 
     override fun sendTask(id: Long, dto: TaskDto, request: HttpServletRequest): BaseMessage {
         val task = taskRepository.findByGeneric(id).get()
         if (dto.projectStatus == ProjectStatus.DONE) {
             task.status = ProjectStatus.DONE
-            emails.sendTask(task.responsible!!.email,task.name,request.remoteUser).throwIfFalse { EmailException() }
+            emails.sendTask(task.responsible!!.email, task.name, request.remoteUser).throwIfFalse { EmailException() }
             taskRepository.save(task)
             return BaseMessage.OK
         }
@@ -366,12 +433,15 @@ class TaskServiceImp(
 class SalaryServiceImp(
     private var salaryRepository: SalaryRepository,
     private var companyUserRepository: CompanyUserRepository
-) : SalaryService{
+) : SalaryService {
     override fun create(salary: SalaryDto): BaseMessage {
         val user = companyUserRepository.findByUserId(salary.userId)
         user.isPresent.throwIfFalse { ObjectNotFoundException() }
-        salaryRepository.findByMonthAndCompanyUserUserOrderById(salary.createDate.month,user.get().user!!).isPresent.throwIfTrue { AlreadyReportedException() }
-        salaryRepository.save(Salary(salary.salary,user.get(),salary.createDate,salary.createDate.month))
+        salaryRepository.findByMonthAndCompanyUserUserOrderById(
+            salary.createDate.month,
+            user.get().user!!
+        ).isPresent.throwIfTrue { AlreadyReportedException() }
+        salaryRepository.save(Salary(salary.salary, user.get(), salary.createDate, salary.createDate.month))
         return BaseMessage.OK
     }
 

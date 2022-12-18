@@ -158,8 +158,6 @@ data class Salary(
     var salary: Double? = null,
     @OneToOne
     var companyUser : CompanyUser,
-    @Column(updatable = false)
-    @CreationTimestamp
-    val createSalary: Timestamp? = null,
+    val createSalary: Date? = null,
     val month: Int? = null
 ):AbsLongEntity()

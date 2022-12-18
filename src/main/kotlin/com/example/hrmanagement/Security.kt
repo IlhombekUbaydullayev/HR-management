@@ -53,7 +53,7 @@ class JwtProvider {
             .setSubject(username)
             .setIssuedAt(Date())
             .setExpiration(expireDate)
-            .claim("roles",systemRoleName.name)
+            .claim("roles", systemRoleName.name)
             .signWith(SignatureAlgorithm.HS512, secretKey)
             .compact()
     }
@@ -80,7 +80,7 @@ class JwtProvider {
 class SpringSecurityAuditAwareImpl : AuditorAware<Long> {
     override fun getCurrentAuditor(): Optional<Long> {
         val authentication = SecurityContextHolder.getContext().authentication
-        if (!(authentication == null || !authentication.isAuthenticated || "anonymousUser" == ""+authentication.principal)) {
+        if (!(authentication == null || !authentication.isAuthenticated || "anonymousUser" == "" + authentication.principal)) {
             val uuid = (authentication.principal as User).id
             return Optional.of(uuid!!)
         }

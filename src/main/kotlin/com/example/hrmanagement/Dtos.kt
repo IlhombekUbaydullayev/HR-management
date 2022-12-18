@@ -144,13 +144,23 @@ data class UserResponseDto(
     }
 }
 
-data class UserControlDto(
-    var task : TaskResponseDto? = null
-)
-{
+ class UserControlDto{
+    var task: TaskResponseDto? = null
+    var salary: SalaryResponseDto? = null
+    constructor(t : TaskResponseDto){
+        this.task = t
+    }
+
+    constructor(s : SalaryResponseDto){
+        this.salary = s
+    }
     companion object{
         fun toDto(j: Task) = j.run {
-            UserControlDto(task = TaskResponseDto.toDto(j))
+            UserControlDto(TaskResponseDto.doDto(j))
+        }
+
+        fun doDto(s:Salary) = s.run {
+            UserControlDto(SalaryResponseDto.toDto(this))
         }
     }
 }
@@ -169,6 +179,10 @@ data class TaskResponseDto(
         fun toDto(t:Task) = t.run {
             TaskResponseDto(id!!,name,comment,lifeTime, userId!!.map { UserDtoSec.toDto(it) }.toSet(),status,
                 responsible?.let { UserDto.toDto(it) })
+        }
+
+        fun doDto(t:Task) = t.run {
+            TaskResponseDto(id!!,name,comment,lifeTime,null,status,null)
         }
     }
 }
@@ -214,5 +228,17 @@ data class CompanyUserResponseDto(
 data class SalaryDto(
     var salary : Double,
     var userId : Long,
-    var createDate : Timestamp
+    var createDate : Date
 )
+
+data class SalaryResponseDto(
+    var salary : Double? = null,
+    var createDate : Date? = null
+)
+{
+    companion object{
+        fun toDto(s: Salary) = s.run {
+            SalaryResponseDto(salary,createSalary)
+        }
+    }
+}
