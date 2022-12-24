@@ -19,7 +19,7 @@ abstract class AbsLongEntity : AbsMainEntity() {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
-    var deleted : Boolean? = false
+    var deleted: Boolean? = false
 }
 
 @MappedSuperclass
@@ -50,10 +50,10 @@ data class User(
     var passwords: String = "",
     @Enumerated(EnumType.STRING)
     var systemRoleName: CompanyRoleName? = CompanyRoleName.ROLE_USER,
-    var enabled : Boolean = false,
-    private val accountNonExpired : Boolean = true,
-    private val accountNonLocked : Boolean = true,
-    private val credentialsNonExpired : Boolean = true,
+    var enabled: Boolean = false,
+    private val accountNonExpired: Boolean = true,
+    private val accountNonLocked: Boolean = true,
+    private val credentialsNonExpired: Boolean = true,
     var emailCode: String? = null
 ) :
     AbsLongEntity(), UserDetails {
@@ -101,9 +101,9 @@ data class Company(
 @Entity
 data class CompanyPermission(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private val workspaceRole : CompanyRole? = null,
+    private val workspaceRole: CompanyRole? = null,
     @Enumerated(EnumType.STRING)
-    private val permission : CompanyPermissionName? = null
+    private val permission: CompanyPermissionName? = null
 ) : AbsLongEntity()
 
 @EqualsAndHashCode(callSuper = true)
@@ -115,7 +115,7 @@ data class CompanyRole(
     val name: String? = null,
     @Enumerated(EnumType.STRING)
     val extendsRole: CompanyRoleName? = null
-): AbsLongEntity()
+) : AbsLongEntity()
 
 @EqualsAndHashCode(callSuper = true)
 @Entity
@@ -132,32 +132,33 @@ data class CompanyUser(
 
 @Entity
 data class Task(
-    var name : String,
-    var comment : String,
-    var lifeTime : Date? = null,
+    var name: String,
+    var comment: String,
+    var lifeTime: Date? = null,
     @Enumerated(EnumType.STRING) var status: ProjectStatus = ProjectStatus.TODO,
     @ManyToOne
-    var responsible : User? = null,
+    var responsible: User? = null,
     @ManyToMany
-    var userId : Set<User> ? = null,
+    var userId: Set<User>? = null,
     @field:Column(nullable = false, unique = true)
-    var generic : Long,
+    var generic: Long,
 ) : AbsLongEntity()
 
 @Entity
 data class Controller(
-    var enter_time : Date,
-    var exit_time : Date,
-    var status : Boolean,
+    var enter_time: Date,
+    var exit_time: Date,
+    var status: Boolean,
     @OneToOne(fetch = FetchType.LAZY)
-    var companyUser : CompanyUser? = null
-):AbsLongEntity()
+    var companyUser: CompanyUser? = null
+) : AbsLongEntity()
 
 @Entity
 data class Salary(
     var salary: Double? = null,
-    @OneToOne
-    var companyUser : CompanyUser,
+    @ManyToOne
+    var companyUser: CompanyUser,
     val createSalary: Date? = null,
+    var endDate: Date? = null,
     val month: Int? = null
-):AbsLongEntity()
+) : AbsLongEntity()

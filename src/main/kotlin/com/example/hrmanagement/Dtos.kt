@@ -1,8 +1,13 @@
 package com.example.hrmanagement
 
 import com.fasterxml.jackson.annotation.*
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
+import com.fasterxml.jackson.databind.annotation.JsonNaming
 import io.swagger.v3.oas.annotations.media.Schema
-import java.sql.Timestamp
+import lombok.AllArgsConstructor
+import lombok.NoArgsConstructor
+import org.springframework.expression.spel.ast.Operator
+import java.io.Serializable
 import java.util.*
 import javax.persistence.Column
 import javax.validation.constraints.*
@@ -202,6 +207,12 @@ data class TaskDto(
     var projectStatus : ProjectStatus
 )
 
+data class TaskUpdateDto(
+    var comment : String? = null,
+    var name : String? = null,
+    var status : ProjectStatus? = null
+)
+
 data class CompanyUserUpdateDto(
     var userName : String? = null,
     var userEmail : String? = null,
@@ -242,3 +253,14 @@ data class SalaryResponseDto(
         }
     }
 }
+
+
+data class CustomPage(
+    @get:Size(min = 0)
+    var page:Int=0,
+    @get:Size(min = 1)
+    var size:Int=1,
+    var sort:Sort=Sort.NAME,
+    var startDate : java.sql.Date,
+    var endDate : java.sql.Date
+)

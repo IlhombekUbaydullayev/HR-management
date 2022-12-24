@@ -72,3 +72,11 @@ enum class ProjectStatus{
     DONE,
 }
 
+enum class Sort{
+    NAME,
+    ID,
+    STATUS,
+    START_DATE,
+    END_DATE
+}
+
