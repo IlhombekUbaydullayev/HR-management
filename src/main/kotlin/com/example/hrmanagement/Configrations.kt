@@ -10,8 +10,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Lazy
 import org.springframework.data.domain.AuditorAware
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing
-import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.mail.javamail.JavaMailSenderImpl
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
@@ -36,8 +34,8 @@ class AuditingConfig {
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
-class SecurityConfig (
-    @Lazy private val authService: AuthServiceImp
+class SecurityConfig (@Lazy private val authService: AuthServiceImp
+
 ): WebSecurityConfigurerAdapter(){
 
     @Autowired
