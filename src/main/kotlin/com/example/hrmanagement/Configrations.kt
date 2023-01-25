@@ -48,8 +48,6 @@ class SecurityConfig (@Lazy private val authService: AuthServiceImp
             .antMatchers("/**","/api/v1/auth/company","/api/v1/auth/verifyEmail","/ui/**","/api/doc/**","/api/v1/auth/login","/api/v1/user/**").permitAll()
             .anyRequest().authenticated()
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter::class.java)
-
-//        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
     }
 
     @Bean
